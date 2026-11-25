@@ -3,14 +3,6 @@
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { FormEvent, Suspense, useCallback, useEffect, useState } from 'react'
-import {
-  AlertTriangle,
-  CheckCircle2,
-  KeyRound,
-  Lock,
-  ShieldAlert,
-  ShieldCheck,
-} from 'lucide-react'
 import { secureFetch } from '@/lib/client/api'
 import { CaptchaBox, CaptchaData } from '@/components/CaptchaBox'
 import { PasswordStrengthField } from '@/components/PasswordStrengthField'
@@ -34,9 +26,9 @@ interface InspectResult {
 }
 
 const RISK_STYLES = {
-  low: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
-  medium: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
-  high: 'border-rose-500/40 bg-rose-500/10 text-rose-300',
+  low: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+  medium: 'border-amber-200 bg-amber-50 text-amber-900',
+  high: 'border-rose-200 bg-rose-50 text-rose-900',
 }
 
 function ResetPasswordContent() {
@@ -243,42 +235,40 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="max-w-xl mx-auto space-y-4">
+    <div className="max-w-lg mx-auto space-y-4">
       <DemoContextSwitcher />
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 sm:p-8 space-y-6">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 text-emerald-400 text-xs font-semibold uppercase tracking-wider">
-            <KeyRound className="h-4 w-4" />
-            Multi-Layer Reset Verification
+      <div className="rounded-md border border-zinc-200 bg-white p-7 sm:p-8 space-y-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+        <div className="space-y-1.5 border-b border-zinc-100 pb-4">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">
+            Multi-Layer Recovery Verification
           </div>
-          <h1 className="text-2xl font-bold text-white">Verify &amp; Set New Password</h1>
+          <h1 className="font-serif text-2xl font-medium text-zinc-950">
+            Verify &amp; Set New Password
+          </h1>
         </div>
 
         {loading && (
-          <div className="py-8 text-center text-sm text-slate-400">
+          <div className="py-8 text-center text-xs text-zinc-500">
             Validating 256-bit token hash &amp; device binding...
           </div>
         )}
 
         {!loading && inspectError && (
-          <div role="alert" className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-5 space-y-3">
-            <div className="flex items-center gap-2 font-semibold text-rose-300">
-              <ShieldAlert className="h-5 w-5" />
-              Reset Link Blocked / Invalid
-            </div>
-            <p className="text-sm text-rose-200">{inspectError}</p>
+          <div role="alert" className="rounded-md border border-rose-200 bg-rose-50 p-5 space-y-3">
+            <div className="text-sm font-semibold text-rose-900">Reset Link Blocked / Invalid</div>
+            <p className="text-xs text-rose-800 leading-relaxed">{inspectError}</p>
             <div className="flex gap-3 pt-1">
               <Link
                 href="/forgot-password"
-                className="rounded-lg bg-slate-100 px-3.5 py-2 text-xs font-semibold text-slate-950 hover:bg-white"
+                className="rounded-md bg-zinc-950 px-3.5 py-2 text-xs font-medium text-white hover:bg-zinc-800"
               >
                 Request New Reset Link
               </Link>
               <button
                 type="button"
                 onClick={inspectToken}
-                className="rounded-lg border border-slate-700 px-3.5 py-2 text-xs text-slate-200 hover:bg-slate-800 cursor-pointer"
+                className="rounded-md border border-zinc-300 bg-white px-3.5 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 cursor-pointer"
               >
                 Re-check Origin
               </button>
@@ -287,22 +277,19 @@ function ResetPasswordContent() {
         )}
 
         {completedInfo && (
-          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-5 space-y-3">
-            <div className="flex items-center gap-2 font-semibold text-emerald-300">
-              <CheckCircle2 className="h-5 w-5" />
-              Password Reset Complete
-            </div>
-            <p className="text-sm text-slate-200">{completedInfo.message}</p>
-            <ul className="text-xs text-slate-300 space-y-1 list-disc list-inside">
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 p-5 space-y-3">
+            <div className="text-sm font-semibold text-emerald-950">Password Reset Complete</div>
+            <p className="text-xs text-emerald-900">{completedInfo.message}</p>
+            <ul className="text-xs text-emerald-800 space-y-1 list-disc list-inside">
               <li>Single-use token invalidated</li>
-              <li>{completedInfo.revokedSessionsCount} existing session(s) revoked</li>
-              <li>Security alert email dispatched via Nodemailer</li>
+              <li>{completedInfo.revokedSessionsCount} active session(s) revoked</li>
+              <li>Security notification sent via Nodemailer SMTP</li>
               <li>Audit log event recorded</li>
             </ul>
             <div className="pt-2">
               <Link
                 href="/login"
-                className="inline-block rounded-lg bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-emerald-400"
+                className="inline-block rounded-md bg-zinc-950 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-800"
               >
                 Sign in with New Password →
               </Link>
@@ -312,19 +299,14 @@ function ResetPasswordContent() {
 
         {!loading && state && !completedInfo && (
           <>
-            <div className={`rounded-xl border p-4 space-y-2 ${RISK_STYLES[state.riskLevel]}`}>
+            <div className={`rounded-md border p-4 space-y-2 ${RISK_STYLES[state.riskLevel]}`}>
               <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider">
-                <span className="flex items-center gap-1.5">
-                  {state.riskLevel === 'low' ? (
-                    <ShieldCheck className="h-4 w-4" />
-                  ) : (
-                    <AlertTriangle className="h-4 w-4" />
-                  )}
+                <span>
                   Risk Assessment: {state.riskLevel} ({state.riskScore}/100)
                 </span>
-                <span>Account: {state.email}</span>
+                <span className="font-mono font-normal lowercase">{state.email}</span>
               </div>
-              <ul className="text-xs space-y-0.5 opacity-90 list-disc list-inside">
+              <ul className="text-xs space-y-0.5 list-disc list-inside">
                 {state.riskFactors.map((f) => (
                   <li key={f}>{f}</li>
                 ))}
@@ -332,7 +314,7 @@ function ResetPasswordContent() {
             </div>
 
             {stepError && (
-              <div role="alert" className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-200">
+              <div role="alert" className="rounded-md border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs text-rose-800">
                 {stepError}
               </div>
             )}
@@ -341,10 +323,10 @@ function ResetPasswordContent() {
               <form onSubmit={handleVerifyOtp} className="space-y-4">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label htmlFor="otp" className="block text-sm font-medium text-slate-200">
-                      Layer 2 · Enter 6-Digit Email OTP
+                    <label htmlFor="otp" className="block text-sm font-medium text-zinc-800">
+                      Stage 02 · 6-Digit Email OTP
                     </label>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs font-mono text-zinc-500">
                       {state.otpAttemptsRemaining} attempt(s) left
                     </span>
                   </div>
@@ -357,7 +339,7 @@ function ResetPasswordContent() {
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                     placeholder="123456"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-center text-lg font-mono tracking-[0.4em] text-slate-100 placeholder-slate-600 focus:border-emerald-500 focus:outline-none"
+                    className="w-full rounded-md border border-zinc-300 bg-white px-3.5 py-2.5 text-center text-lg font-mono tracking-[0.4em] text-zinc-950 placeholder-zinc-400 focus:border-zinc-900 focus:outline-none"
                   />
                 </div>
 
@@ -373,7 +355,7 @@ function ResetPasswordContent() {
                 <button
                   type="submit"
                   disabled={submitting || Boolean(state.lockedUntil)}
-                  className="w-full rounded-lg bg-emerald-500 py-2.5 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50 cursor-pointer"
+                  className="w-full rounded-md bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 cursor-pointer"
                 >
                   {state.lockedUntil
                     ? 'Temporarily Locked'
@@ -386,18 +368,15 @@ function ResetPasswordContent() {
 
             {state.otpVerified && !state.extraCheckPassed && (
               <form onSubmit={handleVerifyExtra} className="space-y-4">
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200 flex items-center gap-2">
-                  <Lock className="h-4 w-4 shrink-0" />
-                  <span>
-                    Adaptive Step-Up Required ({state.riskLevel.toUpperCase()} Risk): verify your
-                    secondary factor below.
-                  </span>
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-900">
+                  Adaptive Step-Up Required ({state.riskLevel.toUpperCase()} Risk): verify your
+                  secondary factor below.
                 </div>
 
                 {(state.extraCheckRequired === 'security_question' ||
                   state.extraCheckRequired === 'both') && (
                   <div className="space-y-1.5">
-                    <label htmlFor="sec-answer" className="block text-sm font-medium text-slate-200">
+                    <label htmlFor="sec-answer" className="block text-sm font-medium text-zinc-800">
                       {state.securityQuestionText || 'Security Question'}
                     </label>
                     <input
@@ -407,14 +386,14 @@ function ResetPasswordContent() {
                       value={securityAnswer}
                       onChange={(e) => setSecurityAnswer(e.target.value)}
                       placeholder="Your security answer"
-                      className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-slate-100 focus:border-amber-400 focus:outline-none"
+                      className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 focus:border-zinc-900 focus:outline-none"
                     />
                   </div>
                 )}
 
                 {(state.extraCheckRequired === 'totp' || state.extraCheckRequired === 'both') && (
                   <div className="space-y-1.5">
-                    <label htmlFor="totp-stepup" className="block text-sm font-medium text-slate-200">
+                    <label htmlFor="totp-stepup" className="block text-sm font-medium text-zinc-800">
                       Authenticator App (TOTP) 6-Digit Code
                     </label>
                     <input
@@ -426,7 +405,7 @@ function ResetPasswordContent() {
                       value={totpCode}
                       onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
                       placeholder="6-digit code"
-                      className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm font-mono tracking-widest text-slate-100 focus:border-amber-400 focus:outline-none"
+                      className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-mono tracking-widest text-zinc-950 focus:border-zinc-900 focus:outline-none"
                     />
                   </div>
                 )}
@@ -434,7 +413,7 @@ function ResetPasswordContent() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full rounded-lg bg-amber-400 py-2.5 text-sm font-semibold text-slate-950 hover:bg-amber-300 disabled:opacity-50 cursor-pointer"
+                  className="w-full rounded-md bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? 'Checking Factor...' : 'Verify Step-Up Factor'}
                 </button>
@@ -445,14 +424,14 @@ function ResetPasswordContent() {
               <form onSubmit={handleCompleteReset} className="space-y-4">
                 <PasswordStrengthField
                   id="new-password"
-                  label="Layer 4 · Set New Strong Password"
+                  label="Stage 04 · Set New Strong Password"
                   value={newPassword}
                   onChange={setNewPassword}
                   userInputs={[state.email]}
                 />
 
                 <div className="space-y-1.5">
-                  <label htmlFor="confirm-pw" className="block text-sm font-medium text-slate-200">
+                  <label htmlFor="confirm-pw" className="block text-sm font-medium text-zinc-800">
                     Confirm New Password
                   </label>
                   <input
@@ -462,16 +441,16 @@ function ResetPasswordContent() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter new password"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none"
+                    className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 focus:border-zinc-900 focus:outline-none"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full rounded-lg bg-emerald-500 py-2.5 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-50 cursor-pointer"
+                  className="w-full rounded-md bg-zinc-950 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 cursor-pointer"
                 >
-                  {submitting ? 'Updating Password...' : 'Update Password & Revoke Old Sessions'}
+                  {submitting ? 'Updating Password...' : 'Update Password & Revoke Sessions'}
                 </button>
               </form>
             )}
@@ -486,7 +465,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="max-w-xl mx-auto py-12 text-center text-sm text-slate-400">
+        <div className="max-w-lg mx-auto py-12 text-center text-xs text-zinc-500">
           Loading reset verification...
         </div>
       }

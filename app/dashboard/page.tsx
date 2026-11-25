@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { ShieldCheck, Smartphone, Laptop, KeyRound, LogOut } from 'lucide-react'
 import { secureFetch } from '@/lib/client/api'
 
 interface UserProfile {
@@ -166,26 +165,26 @@ export default function DashboardPage() {
   }
 
   if (loading) {
-    return <div className="py-12 text-center text-sm text-slate-400">Loading security profile...</div>
+    return <div className="py-12 text-center text-xs text-zinc-500">Loading account profile...</div>
   }
 
   if (!user) {
     return (
-      <div className="max-w-md mx-auto rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center space-y-4">
-        <h1 className="text-xl font-bold text-white">Sign in required</h1>
-        <p className="text-sm text-slate-400">
-          Authenticate to manage TOTP MFA, security questions, trusted devices, and active sessions.
+      <div className="max-w-md mx-auto rounded-md border border-zinc-200 bg-white p-8 text-center space-y-4">
+        <h1 className="font-serif text-xl font-medium text-zinc-950">Authentication Required</h1>
+        <p className="text-xs text-zinc-600 leading-relaxed">
+          Sign in to configure TOTP MFA, security questions, trusted devices, and active sessions.
         </p>
         <div className="flex justify-center gap-3">
           <Link
             href="/login"
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950"
+            className="rounded-md bg-zinc-950 px-4 py-2 text-xs font-medium text-white"
           >
             Sign In
           </Link>
           <Link
             href="/register"
-            className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
+            className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-800"
           >
             Register
           </Link>
@@ -195,80 +194,79 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Account Security Profile</h1>
-          <p className="text-sm text-slate-400">
-            Signed in as <span className="text-slate-200">{user.email}</span> · Role:{' '}
-            <span className="uppercase font-mono text-emerald-400">{user.role}</span>
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-zinc-200 pb-6">
+        <div className="space-y-1">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">
+            Account Security Configuration
+          </div>
+          <h1 className="font-serif text-3xl font-medium text-zinc-950">{user.name}</h1>
+          <p className="text-xs text-zinc-600">
+            <span className="font-mono">{user.email}</span> · Role:{' '}
+            <span className="uppercase font-mono font-semibold text-zinc-900">{user.role}</span>
           </p>
         </div>
         <Link
           href="/forgot-password"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-medium text-slate-200 hover:border-emerald-500/50"
+          className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-xs font-medium text-zinc-900 hover:bg-zinc-50"
         >
-          <KeyRound className="h-3.5 w-3.5 text-emerald-400" />
-          Test Reset Flow
+          Test Password Reset Flow →
         </Link>
       </div>
 
       {statusMsg && (
-        <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">
           {statusMsg}
         </div>
       )}
       {errorMsg && (
-        <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-200">
+        <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
           {errorMsg}
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-semibold text-white">
-              <Smartphone className="h-4 w-4 text-cyan-400" />
-              Authenticator App (TOTP)
-            </div>
+        <div className="rounded-md border border-zinc-200 bg-white p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+            <h2 className="text-sm font-semibold text-zinc-950">Authenticator App (TOTP)</h2>
             <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              className={`rounded px-2 py-0.5 text-[11px] font-medium border ${
                 user.totpEnabled
-                  ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                  : 'bg-slate-800 text-slate-400'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-zinc-100 text-zinc-600 border-zinc-200'
               }`}
             >
               {user.totpEnabled ? 'Enabled' : 'Not Configured'}
             </span>
           </div>
 
-          <p className="text-xs text-slate-400">
-            High-risk password resets from unfamiliar devices or locations require a 6-digit TOTP
-            code from Google Authenticator or Authy.
+          <p className="text-xs text-zinc-600 leading-relaxed">
+            High-risk password resets from unfamiliar devices or regions require a 6-digit RFC
+            6238 code from Google Authenticator or Authy.
           </p>
 
           {!user.totpEnabled && !qrDataUrl && (
             <button
               type="button"
               onClick={startTotpSetup}
-              className="rounded-lg bg-cyan-500 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-400 cursor-pointer"
+              className="rounded-md bg-zinc-950 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-800 cursor-pointer"
             >
               Enroll Authenticator QR Code
             </button>
           )}
 
           {qrDataUrl && (
-            <form onSubmit={confirmTotp} className="space-y-3 border-t border-slate-800 pt-4">
+            <form onSubmit={confirmTotp} className="space-y-3 border-t border-zinc-100 pt-4">
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={qrDataUrl}
                   alt="TOTP QR Code"
-                  className="h-36 w-36 rounded-lg border border-slate-700 bg-white p-1.5"
+                  className="h-32 w-32 rounded border border-zinc-200 bg-white p-1"
                 />
-                <div className="space-y-2 text-xs text-slate-300">
-                  <p>Scan this QR code in your Authenticator app, or enter secret manually:</p>
-                  <code className="block rounded bg-slate-950 px-2.5 py-1.5 font-mono text-emerald-300 break-all">
+                <div className="space-y-2 text-xs text-zinc-600">
+                  <p>Scan in your authenticator app or enter this base32 secret manually:</p>
+                  <code className="block rounded border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 font-mono text-zinc-900 break-all">
                     {totpSecret}
                   </code>
                 </div>
@@ -282,11 +280,11 @@ export default function DashboardPage() {
                   value={totpCode}
                   onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
                   placeholder="Enter 6-digit code"
-                  className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-mono text-slate-100"
+                  className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-mono text-zinc-950"
                 />
                 <button
                   type="submit"
-                  className="rounded-lg bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+                  className="rounded-md bg-zinc-950 px-4 py-2 text-xs font-medium text-white cursor-pointer"
                 >
                   Verify &amp; Enable
                 </button>
@@ -295,7 +293,7 @@ export default function DashboardPage() {
           )}
 
           {user.totpEnabled && (
-            <form onSubmit={disableTotp} className="flex gap-2 border-t border-slate-800 pt-4">
+            <form onSubmit={disableTotp} className="flex gap-2 border-t border-zinc-100 pt-4">
               <input
                 type="text"
                 inputMode="numeric"
@@ -304,11 +302,11 @@ export default function DashboardPage() {
                 value={disableCode}
                 onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, ''))}
                 placeholder="6-digit code to disable"
-                className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100"
+                className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-xs font-mono text-zinc-950"
               />
               <button
                 type="submit"
-                className="rounded-lg border border-rose-500/40 px-3 py-2 text-xs text-rose-300 hover:bg-rose-500/10 cursor-pointer"
+                className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800 hover:bg-rose-100 cursor-pointer"
               >
                 Disable TOTP
               </button>
@@ -316,13 +314,10 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-semibold text-white">
-              <ShieldCheck className="h-4 w-4 text-emerald-400" />
-              Security Question Fallback
-            </div>
-            <span className="text-xs text-slate-400">
+        <div className="rounded-md border border-zinc-200 bg-white p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+            <h2 className="text-sm font-semibold text-zinc-950">Security Question Fallback</h2>
+            <span className="text-xs text-zinc-500">
               {user.hasSecurityQuestion ? 'Configured' : 'Unset'}
             </span>
           </div>
@@ -332,7 +327,7 @@ export default function DashboardPage() {
               required
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100"
+              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900"
             />
             <input
               type="text"
@@ -340,11 +335,11 @@ export default function DashboardPage() {
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               placeholder="New answer (bcrypt hashed)"
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950"
             />
             <button
               type="submit"
-              className="rounded-lg bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-950 hover:bg-white cursor-pointer"
+              className="rounded-md bg-zinc-950 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-800 cursor-pointer"
             >
               Save Security Question
             </button>
@@ -353,40 +348,38 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-white">Active Sessions ({sessions.length})</h2>
+        <div className="rounded-md border border-zinc-200 bg-white overflow-hidden">
+          <div className="border-b border-zinc-200 bg-zinc-50 px-5 py-3 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-700">
+              Active Sessions ({sessions.length})
+            </h2>
             {sessions.length > 1 && (
               <button
                 type="button"
                 onClick={revokeOthers}
-                className="inline-flex items-center gap-1 rounded-lg border border-amber-500/40 px-2.5 py-1 text-xs text-amber-300 hover:bg-amber-500/10 cursor-pointer"
+                className="text-xs font-medium text-rose-700 hover:underline cursor-pointer"
               >
-                <LogOut className="h-3 w-3" />
                 Revoke others
               </button>
             )}
           </div>
-          <div className="space-y-2.5">
+          <div className="divide-y divide-zinc-200">
             {sessions.map((s) => (
-              <div
-                key={s.id}
-                className="rounded-lg border border-slate-800 bg-slate-950/70 p-3 flex items-center justify-between text-xs"
-              >
-                <div>
-                  <div className="font-medium text-slate-200">
+              <div key={s.id} className="px-5 py-3 flex items-center justify-between text-xs">
+                <div className="space-y-0.5">
+                  <div className="font-medium text-zinc-900">
                     {s.deviceLabel}{' '}
                     {s.isCurrent && (
-                      <span className="ml-1.5 rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-300">
+                      <span className="ml-1.5 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
                         CURRENT
                       </span>
                     )}
                   </div>
-                  <div className="text-slate-400">
-                    {s.location} · IP {s.ip}
+                  <div className="text-zinc-500">
+                    {s.location} · <span className="font-mono">{s.ip}</span>
                   </div>
                 </div>
-                <span className="text-slate-500 font-mono">
+                <span className="text-zinc-500 font-mono">
                   {new Date(s.createdAt).toLocaleTimeString()}
                 </span>
               </div>
@@ -394,23 +387,21 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-4">
-          <div className="flex items-center gap-2 font-semibold text-white">
-            <Laptop className="h-4 w-4 text-emerald-400" />
-            Trusted Device Baseline ({user.knownDevices.length})
+        <div className="rounded-md border border-zinc-200 bg-white overflow-hidden">
+          <div className="border-b border-zinc-200 bg-zinc-50 px-5 py-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-700">
+              Trusted Device Baseline ({user.knownDevices.length})
+            </h2>
           </div>
-          <div className="space-y-2.5">
+          <div className="divide-y divide-zinc-200">
             {user.knownDevices.map((d, idx) => (
-              <div
-                key={`${d.fingerprint}-${idx}`}
-                className="rounded-lg border border-slate-800 bg-slate-950/70 p-3 text-xs space-y-1"
-              >
+              <div key={`${d.fingerprint}-${idx}`} className="px-5 py-3 text-xs space-y-0.5">
                 <div className="flex justify-between">
-                  <span className="font-medium text-slate-200">{d.label}</span>
-                  <span className="font-mono text-slate-500">{d.fingerprint.slice(0, 12)}…</span>
+                  <span className="font-medium text-zinc-900">{d.label}</span>
+                  <span className="font-mono text-zinc-500">{d.fingerprint.slice(0, 12)}…</span>
                 </div>
-                <div className="text-slate-400">
-                  {d.location} · {d.ip}
+                <div className="text-zinc-500">
+                  {d.location} · <span className="font-mono">{d.ip}</span>
                 </div>
               </div>
             ))}

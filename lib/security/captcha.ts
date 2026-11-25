@@ -24,7 +24,7 @@ function renderCaptchaSvg(code: string): string {
     const x = 22 + idx * 32
     const y = 34 + crypto.randomInt(-5, 6)
     const rotate = crypto.randomInt(-18, 19)
-    return `<text x="${x}" y="${y}" transform="rotate(${rotate} ${x} ${y})" font-family="monospace" font-size="24" font-weight="700" fill="#34d399">${ch}</text>`
+    return `<text x="${x}" y="${y}" transform="rotate(${rotate} ${x} ${y})" font-family="monospace" font-size="24" font-weight="700" fill="#fafafa">${ch}</text>`
   })
 
   const lines = Array.from({ length: 5 }, () => {
@@ -32,11 +32,11 @@ function renderCaptchaSvg(code: string): string {
     const y1 = crypto.randomInt(0, 56)
     const x2 = crypto.randomInt(0, 190)
     const y2 = crypto.randomInt(0, 56)
-    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#475569" stroke-width="1.4" opacity="0.65"/>`
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#71717a" stroke-width="1.4" opacity="0.7"/>`
   })
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="190" height="56" viewBox="0 0 190 56" role="img" aria-label="Security CAPTCHA challenge">
-  <rect width="190" height="56" rx="8" fill="#0f172a"/>
+  <rect width="190" height="56" rx="6" fill="#18181b"/>
   ${lines.join('\n  ')}
   ${chars.join('\n  ')}
 </svg>`

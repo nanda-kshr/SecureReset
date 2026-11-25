@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ShieldCheck, Activity, Terminal, KeyRound, LayoutDashboard, LogOut } from 'lucide-react'
+import { Shield } from 'lucide-react'
 import { secureFetch } from '@/lib/client/api'
 
 interface NavUser {
@@ -39,60 +39,60 @@ export function Navbar() {
   }
 
   const navItems = [
-    { href: '/', label: 'Overview', icon: ShieldCheck },
-    { href: '/forgot-password', label: 'Reset Flow', icon: KeyRound },
-    { href: '/security-dashboard', label: 'Security SOC', icon: Activity },
-    { href: '/simulator', label: 'Attack Simulator', icon: Terminal },
-    ...(user ? [{ href: '/dashboard', label: 'Account', icon: LayoutDashboard }] : []),
+    { href: '/', label: 'Overview' },
+    { href: '/forgot-password', label: 'Reset Flow' },
+    { href: '/security-dashboard', label: 'Security Audit' },
+    { href: '/simulator', label: 'Attack Simulator' },
+    ...(user ? [{ href: '/dashboard', label: 'Account' }] : []),
   ]
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight text-white">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-400">
-            <ShieldCheck className="h-4 w-4" />
-          </span>
-          <span>SecureReset</span>
-        </Link>
+    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 backdrop-blur-sm">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 h-14 flex items-center justify-between gap-6">
+        <div className="flex items-center gap-8 h-full">
+          <Link
+            href="/"
+            className="flex items-center gap-2 font-semibold tracking-tight text-zinc-950"
+          >
+            <Shield className="h-4 w-4 text-zinc-900" strokeWidth={2} />
+            <span className="text-[15px]">SecureReset</span>
+          </Link>
 
-        <nav className="hidden md:flex items-center gap-1">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  isActive
-                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900'
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
+          <nav className="hidden md:flex items-center gap-6 h-full">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`h-full inline-flex items-center text-sm border-b-2 transition-colors ${
+                    isActive
+                      ? 'border-zinc-950 text-zinc-950 font-medium'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-900'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {user ? (
             <>
               <Link
                 href="/dashboard"
-                className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-slate-900 border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:border-emerald-500/50"
+                className="hidden sm:inline-flex items-center gap-2 text-xs text-zinc-700 hover:text-zinc-950"
               >
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                {user.name}
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                <span className="font-medium">{user.name}</span>
               </Link>
               <button
                 onClick={handleLogout}
                 type="button"
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-900 hover:text-white cursor-pointer"
+                className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950 cursor-pointer"
               >
-                <LogOut className="h-3.5 w-3.5" />
                 Sign out
               </button>
             </>
@@ -100,13 +100,13 @@ export function Navbar() {
             <>
               <Link
                 href="/login"
-                className="px-3 py-1.5 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-slate-900"
+                className="px-2.5 py-1.5 text-sm text-zinc-600 hover:text-zinc-950"
               >
                 Sign in
               </Link>
               <Link
                 href="/register"
-                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition-colors"
+                className="rounded-md bg-zinc-950 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
               >
                 Register
               </Link>
@@ -115,15 +115,13 @@ export function Navbar() {
         </div>
       </div>
 
-      <div className="md:hidden border-t border-slate-800/80 px-4 py-2 flex gap-2 overflow-x-auto">
+      <div className="md:hidden border-t border-zinc-200 bg-zinc-50 px-4 py-2 flex gap-4 overflow-x-auto">
         {navItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={`whitespace-nowrap px-2.5 py-1 rounded-md text-xs ${
-              pathname === item.href
-                ? 'bg-emerald-500/15 text-emerald-300'
-                : 'text-slate-400 hover:text-slate-100'
+            className={`whitespace-nowrap text-xs ${
+              pathname === item.href ? 'font-semibold text-zinc-950' : 'text-zinc-500'
             }`}
           >
             {item.label}

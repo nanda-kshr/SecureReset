@@ -168,8 +168,9 @@ export async function POST(req: NextRequest) {
       createdAt: now,
     })
 
-    const appOrigin =
-      process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin || 'http://localhost:3000'
+    const appOrigin = (
+      process.env.NEXT_PUBLIC_APP_URL || 'https://secure-reset.vercel.app'
+    ).replace(/\/+$/, '')
     const resetUrl = `${appOrigin}/reset-password?token=${rawToken}`
 
     await sendPasswordResetEmail({

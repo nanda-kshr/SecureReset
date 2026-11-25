@@ -263,6 +263,7 @@ describe('API Route Handlers — Register & Reset Flow', () => {
     )
 
     const mailCall = sendMailSpy.mock.calls[0][0] as { resetUrl: string; otp: string }
+    expect(mailCall.resetUrl).toMatch(/^https:\/\/secure-reset\.vercel\.app\/reset-password\?token=/)
     const rawToken = new URL(mailCall.resetUrl).searchParams.get('token')!
     const realOtp = mailCall.otp
 

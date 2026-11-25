@@ -1,127 +1,148 @@
 import Link from 'next/link'
-import {
-  ShieldCheck,
-  KeyRound,
-  Activity,
-  Terminal,
-  Lock,
-  Fingerprint,
-  MailCheck,
-  DatabaseZap,
-} from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 
-const LAYERS = [
+const PIPELINE = [
   {
-    icon: MailCheck,
-    title: '1. Anti-Enumeration & Dual Factor',
-    desc: 'Uniform HTTP 200 responses prevent email probing. Resets require both a 256-bit hashed single-use link (15m TTL) and a 6-digit OTP.',
+    step: '01',
+    layer: 'Enumeration Guard',
+    mechanism: 'Uniform HTTP 200 responses & constant-cost bcrypt timing equalization',
   },
   {
-    icon: Fingerprint,
-    title: '2. Device Binding & Risk Scoring',
-    desc: 'Tokens are cryptographically bound to the requesting device fingerprint. Unusual IP, device, or location triggers Security Question or TOTP.',
+    step: '02',
+    layer: 'Dual Verification',
+    mechanism: '256-bit single-use token (SHA-256 hashed, 15m TTL) + 6-digit OTP',
   },
   {
-    icon: Lock,
-    title: '3. Rate Limits, Lockouts & CAPTCHA',
-    desc: 'MongoDB-backed rate limiting throttles requests. Repeated OTP failures trigger server-signed SVG CAPTCHA and 15-minute lockouts.',
+    step: '03',
+    layer: 'Adaptive Risk Engine',
+    mechanism: 'Device fingerprint, IP & geolocation scoring → Security Question / TOTP',
   },
   {
-    icon: DatabaseZap,
-    title: '4. zxcvbn + HIBP + Reuse Blocking',
-    desc: 'New passwords require zxcvbn score >= 3, pass Have I Been Pwned k-anonymity checks, and cannot reuse the last 5 passwords.',
+    step: '04',
+    layer: 'Abuse Controls',
+    mechanism: 'MongoDB rate limits, server-signed SVG CAPTCHA & 15-minute lockouts',
+  },
+  {
+    step: '05',
+    layer: 'Password & Session Hygiene',
+    mechanism: 'zxcvbn ≥ 3, HIBP k-anonymity check, 5-password history & full session revocation',
   },
 ]
 
 export default function HomePage() {
   return (
     <div className="space-y-12">
-      <section className="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-emerald-950/30 p-8 sm:p-10">
-        <div className="max-w-3xl space-y-5">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Capstone Security Architecture · Next.js 16 + MongoDB + Nodemailer
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start border-b border-zinc-200 pb-12">
+        <div className="lg:col-span-7 space-y-6">
+          <div className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+            Capstone Architecture · Hardened Recovery System
           </div>
-          <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">
-            Hardened Password Reset, Built to Defeat Real Attacks.
+          <h1 className="font-serif text-4xl sm:text-5xl font-medium tracking-tight text-zinc-950 leading-[1.12]">
+            Hardened Password Reset, Engineered Against Abuse.
           </h1>
-          <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
-            <strong>SecureReset</strong> replaces naive reset links with defense-in-depth:
-            anti-enumeration responses, 256-bit device-bound hashed tokens, 6-digit OTPs,
-            adaptive risk scoring, TOTP MFA, HIBP k-anonymity checks, and live SOC telemetry.
+          <p className="text-base text-zinc-600 leading-relaxed max-w-xl">
+            SecureReset replaces single-link account recovery with a five-layer verification
+            pipeline: anti-enumeration responses, device-bound 256-bit tokens, adaptive risk
+            scoring, HIBP breach screening, and complete session invalidation.
           </p>
 
-          <div className="flex flex-wrap gap-3 pt-2">
-            <Link
-              href="/register"
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-slate-950 hover:bg-emerald-400 transition-colors"
-            >
-              Create Account &amp; Enroll MFA
-            </Link>
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             <Link
               href="/forgot-password"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-5 py-2.5 text-sm font-medium text-slate-100 hover:border-slate-500 transition-colors"
+              className="inline-flex items-center gap-2 rounded-md bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
             >
-              <KeyRound className="h-4 w-4 text-emerald-400" />
               Test Password Reset Flow
+              <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/simulator"
-              className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-5 py-2.5 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20 transition-colors"
+              className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 hover:bg-zinc-50 transition-colors"
             >
-              <Terminal className="h-4 w-4" />
               Launch Attack Simulator
             </Link>
             <Link
-              href="/security-dashboard"
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-5 py-2.5 text-sm font-medium text-slate-200 hover:border-slate-500 transition-colors"
+              href="/register"
+              className="px-3 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-950"
             >
-              <Activity className="h-4 w-4 text-amber-400" />
-              View Security Dashboard
+              Create Account →
             </Link>
+          </div>
+        </div>
+
+        <div className="lg:col-span-5 rounded-md border border-zinc-200 bg-white overflow-hidden">
+          <div className="border-b border-zinc-200 bg-zinc-50 px-4 py-2.5 flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-700">
+              Verification Specification
+            </span>
+            <span className="text-[11px] font-mono text-zinc-500">5 LAYERS</span>
+          </div>
+          <div className="divide-y divide-zinc-200">
+            {PIPELINE.map((item) => (
+              <div key={item.step} className="px-4 py-3 flex items-start gap-3">
+                <span className="font-mono text-xs font-semibold text-zinc-400 pt-0.5">
+                  {item.step}
+                </span>
+                <div className="space-y-0.5">
+                  <div className="text-sm font-medium text-zinc-900">{item.layer}</div>
+                  <div className="text-xs text-zinc-600 leading-relaxed">{item.mechanism}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="space-y-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white">Defense-in-Depth Layers</h2>
-          <span className="text-xs font-mono text-slate-400">5-STAGE PIPELINE</span>
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="rounded-md border border-zinc-200 bg-white p-6 flex flex-col justify-between gap-4">
+          <div className="space-y-2">
+            <div className="text-xs font-mono uppercase tracking-wider text-zinc-500">01 · Recovery</div>
+            <h2 className="text-base font-semibold text-zinc-950">Interactive Reset Flow</h2>
+            <p className="text-sm text-zinc-600 leading-relaxed">
+              Test trusted vs. foreign origin requests, inspect live risk scores, verify 6-digit
+              OTPs, and satisfy TOTP or security question step-ups.
+            </p>
+          </div>
+          <Link
+            href="/forgot-password"
+            className="text-xs font-semibold text-zinc-950 hover:underline inline-flex items-center gap-1"
+          >
+            Open Reset Flow →
+          </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {LAYERS.map((layer) => {
-            const Icon = layer.icon
-            return (
-              <div
-                key={layer.title}
-                className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 space-y-2.5"
-              >
-                <div className="flex items-center gap-2.5 text-emerald-400 font-semibold text-sm">
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <h3 className="text-slate-100">{layer.title}</h3>
-                </div>
-                <p className="text-sm text-slate-400 leading-relaxed">{layer.desc}</p>
-              </div>
-            )
-          })}
+        <div className="rounded-md border border-zinc-200 bg-white p-6 flex flex-col justify-between gap-4">
+          <div className="space-y-2">
+            <div className="text-xs font-mono uppercase tracking-wider text-zinc-500">02 · Telemetry</div>
+            <h2 className="text-base font-semibold text-zinc-950">Security Audit Console</h2>
+            <p className="text-sm text-zinc-600 leading-relaxed">
+              Monitor reset volume, blocked brute-force &amp; replay attempts, suspicious IP
+              origins, chronological audit logs, and SMTP delivery records.
+            </p>
+          </div>
+          <Link
+            href="/security-dashboard"
+            className="text-xs font-semibold text-zinc-950 hover:underline inline-flex items-center gap-1"
+          >
+            Open Security Audit →
+          </Link>
         </div>
-      </section>
 
-      <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h3 className="text-base font-semibold text-white">Ready to demonstrate blocked attacks?</h3>
-          <p className="text-sm text-slate-400">
-            Run OTP brute-force, token replay, enumeration probes, and cross-device hijack simulations
-            against a side-by-side Naive Reset comparison.
-          </p>
+        <div className="rounded-md border border-zinc-200 bg-white p-6 flex flex-col justify-between gap-4">
+          <div className="space-y-2">
+            <div className="text-xs font-mono uppercase tracking-wider text-zinc-500">03 · Proof</div>
+            <h2 className="text-base font-semibold text-zinc-950">Attack Simulator</h2>
+            <p className="text-sm text-zinc-600 leading-relaxed">
+              Run controlled enumeration probes, OTP brute-force, expired token replays, and
+              cross-device hijacks compared against a naive system.
+            </p>
+          </div>
+          <Link
+            href="/simulator"
+            className="text-xs font-semibold text-zinc-950 hover:underline inline-flex items-center gap-1"
+          >
+            Open Simulator →
+          </Link>
         </div>
-        <Link
-          href="/simulator"
-          className="shrink-0 rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-white transition-colors"
-        >
-          Open Attack Simulator →
-        </Link>
       </section>
     </div>
   )
