@@ -61,22 +61,29 @@ export function CountdownTimer({
     return null
   }, [targetTime])
 
-  const [nowMs, setNowMs] = useState<number>(() => Date.now())
+  const [nowMs, setNowMs] = useState<number>(0)
   const [elapsedSec, setElapsedSec] = useState<number>(0)
   const completedRef = useRef(false)
 
   useEffect(() => {
     completedRef.current = false
+    const rafId = requestAnimationFrame(() => {
+      setNowMs(Date.now())
+    })
     const interval = setInterval(() => {
       setNowMs(Date.now())
       setElapsedSec((prev) => prev + 1)
     }, 1000)
 
-    return () => clearInterval(interval)
+    return () => {
+      cancelAnimationFrame(rafId)
+      clearInterval(interval)
+    }
   }, [targetMs, secondsRemaining])
 
   const remaining = useMemo(() => {
     if (targetMs !== null) {
+      if (nowMs === 0) return 0
       return Math.max(0, Math.ceil((targetMs - nowMs) / 1000))
     }
     if (typeof secondsRemaining === 'number') {
@@ -86,11 +93,12 @@ export function CountdownTimer({
   }, [targetMs, nowMs, secondsRemaining, elapsedSec])
 
   useEffect(() => {
-    if (remaining === 0 && !completedRef.current && (targetMs !== null || (secondsRemaining ?? 0) > 0)) {
+    const ready = targetMs === null || nowMs > 0
+    if (ready && remaining === 0 && !completedRef.current && (targetMs !== null || (secondsRemaining ?? 0) > 0)) {
       completedRef.current = true
       onComplete?.()
     }
-  }, [remaining, targetMs, secondsRemaining, onComplete])
+  }, [remaining, targetMs, nowMs, secondsRemaining, onComplete])
 
   const { display, verbose } = formatDuration(remaining)
   const effectiveTotal = totalSeconds && totalSeconds > 0 ? totalSeconds : Math.max(remaining, 1)
