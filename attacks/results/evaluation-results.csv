@@ -1,0 +1,10 @@
+mode,curve_shape,trials,scenario,attacker_success_rate_pct,veto_window_coverage_pct,legit_false_block_rate_pct,avg_time_to_recover_hours
+naive,piecewise-linear,500,stolen_mailbox,100,0,0,0.02
+naive,piecewise-linear,500,otp_bruteforce,100,0,0,0.02
+naive,piecewise-linear,500,token_replay,60.2,0,0,0.02
+standard,piecewise-linear,500,stolen_mailbox,53.8,0,13.4,0.04
+standard,piecewise-linear,500,otp_bruteforce,0,0,13.4,0.04
+standard,piecewise-linear,500,token_replay,0,0,13.4,0.04
+framework,piecewise-linear,500,stolen_mailbox,9.8,90.2,0,7.66
+framework,piecewise-linear,500,otp_bruteforce,0,0,0,7.66
+framework,piecewise-linear,500,token_replay,0,0,0,7.66
