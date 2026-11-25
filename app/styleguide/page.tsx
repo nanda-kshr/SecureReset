@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowRight, KeyRound, Lock, Mail, RefreshCw, ShieldAlert } from 'lucide-react'
 import {
   Alert,
@@ -95,7 +95,14 @@ export default function StyleguidePage() {
   const [tableEmpty, setTableEmpty] = useState(false)
   const [alertDismissed, setAlertDismissed] = useState(false)
 
-  const [coolingTarget] = useState<number>(() => Date.now() + 18 * 3600 * 1000 + 24 * 60 * 1000)
+  const [coolingTarget, setCoolingTarget] = useState<number>(0)
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      setCoolingTarget(Date.now() + 18 * 3600 * 1000 + 24 * 60 * 1000)
+    })
+    return () => cancelAnimationFrame(id)
+  }, [])
 
   const tableColumns: Array<DataTableColumn<SampleRow>> = [
     {

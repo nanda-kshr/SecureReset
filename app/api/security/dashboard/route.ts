@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unstable_rethrow } from 'next/navigation'
 import { getCollections } from '@/lib/db/mongodb'
 import { getCurrentSession } from '@/lib/security/session'
 import { RECOVERY_CONFIG, resolveResetMode } from '@/lib/recovery/config'
@@ -189,6 +190,7 @@ export async function GET(req: NextRequest) {
       })),
     })
   } catch (err) {
+    unstable_rethrow(err)
     console.error('Security dashboard error:', err)
     return NextResponse.json({ error: 'Failed to load security telemetry' }, { status: 500 })
   }
