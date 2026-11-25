@@ -4,6 +4,7 @@ import { sha256 } from './crypto'
 
 export interface RequestContext {
   ip: string
+  asn: string
   location: string
   userAgent: string
   deviceFingerprint: string
@@ -42,14 +43,19 @@ export function extractContextFromHeaders(
   hdrs: Headers,
   deviceCookieValue?: string
 ): RequestContext {
-  // Demo simulation headers allow capstone evaluators to test foreign IPs, locations, or unknown devices
-  const demoIp = hdrs.get('x-demo-ip')
-  const demoLocation = hdrs.get('x-demo-location')
-  const demoDevice = hdrs.get('x-demo-device')
+  // Demo/evaluation override headers are strictly ignored in production unless explicitly enabled
+  const allowDemoHeaders =
+    process.env.ALLOW_DEMO_HEADERS === 'true' || process.env.NODE_ENV !== 'production'
+
+  const demoIp = allowDemoHeaders ? hdrs.get('x-demo-ip') : null
+  const demoLocation = allowDemoHeaders ? hdrs.get('x-demo-location') : null
+  const demoDevice = allowDemoHeaders ? hdrs.get('x-demo-device') : null
+  const demoAsn = allowDemoHeaders ? hdrs.get('x-demo-asn') : null
 
   const forwarded = hdrs.get('x-forwarded-for')
   const realIp = hdrs.get('x-real-ip')
   const ip = normalizeIp(demoIp || forwarded || realIp)
+  const asn = demoAsn || hdrs.get('x-vercel-ip-asn') || (ip === '127.0.0.1' ? 'AS0-LOCAL' : 'AS-UNKNOWN')
 
   const userAgent = hdrs.get('user-agent') || 'Unknown-UA'
   const acceptLang = hdrs.get('accept-language') || 'en-US'
@@ -57,7 +63,9 @@ export function extractContextFromHeaders(
   const country = hdrs.get('x-vercel-ip-country')
   const derivedLocation =
     demoLocation ||
-    (city && country ? `${city}, ${country}` : country || (ip === '127.0.0.1' ? 'Localhost (Trusted Lab)' : 'Unknown Region'))
+    (city && country
+      ? `${city}, ${country}`
+      : country || (ip === '127.0.0.1' ? 'Localhost (Trusted Lab)' : 'Unknown Region'))
 
   const seed = demoDevice
     ? `demo:${demoDevice}`
@@ -68,6 +76,7 @@ export function extractContextFromHeaders(
 
   return {
     ip,
+    asn,
     location: derivedLocation,
     userAgent,
     deviceFingerprint,

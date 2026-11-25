@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb'
 import { getCollections, UserDoc } from '@/lib/db/mongodb'
 import { generateRandomToken, sha256 } from './crypto'
 import type { RequestContext } from './request-context'
+import { getStrongestLoginMethod } from '@/lib/recovery/assurance'
 
 export const SESSION_COOKIE_NAME = 'sr_session'
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000
@@ -13,30 +14,82 @@ export interface PublicUser {
   email: string
   role: 'user' | 'admin'
   totpEnabled: boolean
+  passkeysCount: number
+  strongestLoginMethod: 'password' | 'totp' | 'passkey'
   hasSecurityQuestion: boolean
   securityQuestionText: string | null
+  probationUntil: string | null
+  flaggedSuspicious: boolean
+  flaggedReason: string | null
+  recoveryCodesRemaining: number
+  confirmedChannels: Array<{
+    id: string
+    type: 'email' | 'backup_email'
+    value: string
+    verified: boolean
+  }>
+  trustedBrowserKeys: Array<{
+    keyId: string
+    label: string
+    createdAt: string
+    lastUsedAt: string | null
+  }>
   knownDevices: Array<{
     fingerprint: string
     label: string
     ip: string
+    asn?: string
     location: string
     lastSeenAt: string
   }>
 }
 
 export function toPublicUser(user: UserDoc): PublicUser {
+  const now = new Date()
+  const activeProbation =
+    user.probationUntil && user.probationUntil > now ? user.probationUntil.toISOString() : null
+
   return {
     id: user._id!.toString(),
     name: user.name,
     email: user.email,
     role: user.role,
     totpEnabled: Boolean(user.totpEnabled),
+    passkeysCount: user.passkeysCount ?? 0,
+    strongestLoginMethod: getStrongestLoginMethod(user),
     hasSecurityQuestion: Boolean(user.securityQuestion?.answerHash),
     securityQuestionText: user.securityQuestion?.question ?? null,
+    probationUntil: activeProbation,
+    flaggedSuspicious: Boolean(user.flaggedSuspicious),
+    flaggedReason: user.flaggedReason ?? null,
+    recoveryCodesRemaining: (user.recoveryCodes || []).filter((c) => !c.usedAt).length,
+    confirmedChannels: (
+      user.confirmedChannels && user.confirmedChannels.length > 0
+        ? user.confirmedChannels
+        : [{ id: 'primary', type: 'email' as const, value: user.email, verified: true }]
+    ).map((c) => ({
+      id: c.id,
+      type: c.type,
+      value: c.value,
+      verified: c.verified,
+    })),
+    trustedBrowserKeys: (user.trustedBrowserKeys || [])
+      .filter((k) => !k.revokedAt)
+      .map((k) => ({
+        keyId: k.keyId,
+        label: k.label,
+        createdAt: k.createdAt instanceof Date ? k.createdAt.toISOString() : String(k.createdAt),
+        lastUsedAt: k.lastUsedAt
+          ? k.lastUsedAt instanceof Date
+            ? k.lastUsedAt.toISOString()
+            : String(k.lastUsedAt)
+          : null,
+      })),
     knownDevices: (user.knownDevices || []).map((d) => ({
       fingerprint: d.fingerprint,
       label: d.label,
       ip: d.ip,
+      asn: d.asn,
       location: d.location,
       lastSeenAt: d.lastSeenAt instanceof Date ? d.lastSeenAt.toISOString() : String(d.lastSeenAt),
     })),
@@ -69,9 +122,18 @@ export async function createSession(
   return { rawToken, expiresAt }
 }
 
-export async function getCurrentSession() {
-  const cookieStore = await cookies()
-  const rawToken = cookieStore.get(SESSION_COOKIE_NAME)?.value
+export async function getCurrentSession(req?: { cookies: { get: (name: string) => { value: string } | undefined } }) {
+  let rawToken: string | undefined
+  if (req) {
+    rawToken = req.cookies.get(SESSION_COOKIE_NAME)?.value
+  } else {
+    try {
+      const cookieStore = await cookies()
+      rawToken = cookieStore.get(SESSION_COOKIE_NAME)?.value
+    } catch {
+      return null
+    }
+  }
   if (!rawToken) return null
 
   const tokenHash = sha256(rawToken)
@@ -106,6 +168,44 @@ export async function revokeAllUserSessions(userId: ObjectId): Promise<number> {
     { $set: { revokedAt: new Date() } }
   )
   return result.modifiedCount
+}
+
+/**
+ * Post-reset credential revocation: revokes all web sessions, refresh tokens,
+ * OAuth/API keys, and any other outstanding reset tokens for the account.
+ */
+export async function revokeAllUserAccessCredentials(
+  userId: ObjectId,
+  excludeResetTokenId?: ObjectId
+): Promise<{
+  sessionsRevoked: number
+  refreshTokensRevoked: number
+  apiKeysRevoked: number
+  otherResetsCancelled: number
+}> {
+  const { sessions, refreshTokens, apiKeys, resetTokens } = await getCollections()
+  const now = new Date()
+
+  const [sessRes, refRes, apiRes, resetRes] = await Promise.all([
+    sessions.updateMany({ userId, revokedAt: null }, { $set: { revokedAt: now } }),
+    refreshTokens.updateMany({ userId, revokedAt: null }, { $set: { revokedAt: now } }),
+    apiKeys.updateMany({ userId, revokedAt: null }, { $set: { revokedAt: now } }),
+    resetTokens.updateMany(
+      {
+        userId,
+        usedAt: null,
+        ...(excludeResetTokenId ? { _id: { $ne: excludeResetTokenId } } : {}),
+      },
+      { $set: { usedAt: now, state: 'cancelled' } }
+    ),
+  ])
+
+  return {
+    sessionsRevoked: sessRes.modifiedCount,
+    refreshTokensRevoked: refRes.modifiedCount,
+    apiKeysRevoked: apiRes.modifiedCount,
+    otherResetsCancelled: resetRes.modifiedCount,
+  }
 }
 
 export function sessionCookieOptions(expiresAt: Date) {

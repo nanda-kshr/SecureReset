@@ -9,6 +9,8 @@ import { createCaptchaChallenge, verifyCaptchaChallenge } from '@/lib/security/c
 import { createSession, sessionCookieOptions, SESSION_COOKIE_NAME, toPublicUser } from '@/lib/security/session'
 import { verifyTotpCode } from '@/lib/security/totp'
 import { logAuditEvent } from '@/lib/security/audit'
+import { resolveResetMode } from '@/lib/recovery/config'
+import { emitTelemetry } from '@/lib/recovery/telemetry'
 
 const LoginSchema = z.object({
   email: z.string().trim().email('Valid email is required'),
@@ -23,6 +25,7 @@ export async function POST(req: NextRequest) {
   if (csrfError) return csrfError
 
   const context = getRequestContext(req)
+  const mode = resolveResetMode(req)
 
   try {
     const body = await req.json()
@@ -75,7 +78,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { users } = await getCollections()
+    const { users, resetTokens } = await getCollections()
     const user = await users.findOne({ email })
     const validPw = user ? await verifyPassword(password, user.passwordHash) : false
 
@@ -122,8 +125,43 @@ export async function POST(req: NextRequest) {
     }
 
     await resetRateLimit(rateKey)
-
     const now = new Date()
+
+    // Phase 2: Signing in with existing credentials cancels any in-flight/cooling-off reset
+    const cancelledRes = await resetTokens.updateMany(
+      {
+        userId: user._id!,
+        usedAt: null,
+      },
+      {
+        $set: {
+          state: 'cancelled',
+          usedAt: now,
+        },
+      }
+    )
+
+    if (cancelledRes.modifiedCount > 0) {
+      await logAuditEvent({
+        eventType: 'RESET_CANCELLED_BY_LOGIN',
+        severity: 'warning',
+        blocked: false,
+        email,
+        userId: user._id!,
+        context,
+        details: { cancelledCount: cancelledRes.modifiedCount },
+      })
+      await emitTelemetry({
+        mode,
+        eventType: 'RESET_CANCELLED_BY_LOGIN',
+        state: 'cancelled',
+        accountId: user._id!.toString(),
+        outcome: 'cancelled',
+        actorType: 'legitimate',
+        signals: { cancelledCount: cancelledRes.modifiedCount },
+      })
+    }
+
     const knownDevices = [...(user.knownDevices || [])]
     const existingIdx = knownDevices.findIndex(
       (d) => d.fingerprint === context.deviceFingerprint && d.ip === context.ip
@@ -131,6 +169,7 @@ export async function POST(req: NextRequest) {
     if (existingIdx >= 0) {
       knownDevices[existingIdx] = {
         ...knownDevices[existingIdx],
+        asn: context.asn,
         location: context.location,
         lastSeenAt: now,
       }
@@ -139,6 +178,7 @@ export async function POST(req: NextRequest) {
         fingerprint: context.deviceFingerprint,
         label: context.deviceLabel,
         ip: context.ip,
+        asn: context.asn,
         location: context.location,
         lastSeenAt: now,
       })
@@ -157,11 +197,14 @@ export async function POST(req: NextRequest) {
       email,
       userId: user._id!,
       context,
-      details: { deviceLabel: context.deviceLabel },
+      details: { deviceLabel: context.deviceLabel, cancelledPendingResets: cancelledRes.modifiedCount },
     })
 
     const updatedUser = { ...user, knownDevices: knownDevices.slice(0, 8) }
-    const res = NextResponse.json({ user: toPublicUser(updatedUser) })
+    const res = NextResponse.json({
+      user: toPublicUser(updatedUser),
+      cancelledPendingResets: cancelledRes.modifiedCount,
+    })
     res.cookies.set(SESSION_COOKIE_NAME, rawToken, sessionCookieOptions(expiresAt))
     return res
   } catch (err) {

@@ -1,5 +1,6 @@
 import zxcvbn from 'zxcvbn'
 import { sha1Upper, verifyPassword } from './crypto'
+import { RECOVERY_CONFIG } from '@/lib/recovery/config'
 
 const OFFLINE_COMMON_BREACHED = new Set([
   'password',
@@ -34,6 +35,7 @@ export interface PasswordValidationResult {
 }
 
 export function checkPasswordStrength(password: string, userInputs: string[] = []) {
+  const { minLength, minZxcvbnScore } = RECOVERY_CONFIG.passwordPolicy
   const result = zxcvbn(password, userInputs)
   const feedback: string[] = []
   if (result.feedback.warning) {
@@ -46,7 +48,7 @@ export function checkPasswordStrength(password: string, userInputs: string[] = [
     score: result.score,
     cracksDisplay: String(result.crack_times_display.offline_slow_hashing_1e4_per_second),
     feedback,
-    acceptable: result.score >= 3 && password.length >= 10,
+    acceptable: result.score >= minZxcvbnScore && password.length >= minLength,
   }
 }
 
@@ -111,6 +113,7 @@ export async function validateNewPassword(
   historyHashes: string[] = [],
   userInputs: string[] = []
 ): Promise<PasswordValidationResult> {
+  const { minLength, minZxcvbnScore } = RECOVERY_CONFIG.passwordPolicy
   const strength = checkPasswordStrength(password, userInputs)
   const [breach, reused] = await Promise.all([
     checkHibpBreach(password),
@@ -118,12 +121,12 @@ export async function validateNewPassword(
   ])
 
   const errors: string[] = []
-  if (password.length < 10) {
-    errors.push('Password must be at least 10 characters long.')
+  if (password.length < minLength) {
+    errors.push(`Password must be at least ${minLength} characters long.`)
   }
-  if (strength.score < 3) {
+  if (strength.score < minZxcvbnScore) {
     errors.push(
-      `Password strength score is ${strength.score}/4 (must be at least 3/4). ${strength.feedback[0] || 'Add more unique words or symbols.'}`
+      `Password strength score is ${strength.score}/4 (must be at least ${minZxcvbnScore}/4). ${strength.feedback[0] || 'Add more unique words or symbols.'}`
     )
   }
   if (breach.breached) {

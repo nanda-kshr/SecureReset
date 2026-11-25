@@ -1,9 +1,48 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 
+interface CurvePoint {
+  gap: number
+  hours: number
+}
+
+interface ModeMetric {
+  mode: string
+  events: number
+  attackerSuccessRate: number
+  vetoWindowCoverage: number
+  falseBlockRate: number
+  avgTimeToRecoverHours: number
+}
+
+interface TelemetryItem {
+  id: string
+  timestamp: string
+  mode: string
+  eventType: string
+  state: string
+  accountHash: string
+  assuranceAchieved: number | null
+  assuranceRequired: number | null
+  scoreGap: number | null
+  computedDelayHours: number | null
+  outcome: string
+  actorType: string
+}
+
 interface DashboardData {
+  activeMode?: string
+  curveConfig?: {
+    activeShape: string
+    maxDelayHours: number
+    piecewisePoints: CurvePoint[]
+    logisticPoints: CurvePoint[]
+  }
+  evaluationByMode?: ModeMetric[]
+  telemetryEvents?: TelemetryItem[]
   kpis: {
     totalResetRequests: number
     successfulResets: number
@@ -52,22 +91,37 @@ const SEVERITY_BADGE: Record<string, string> = {
   critical: 'bg-rose-100 text-rose-900 border-rose-300',
 }
 
+function toPolylinePoints(points: CurvePoint[]): string {
+  return points
+    .map((p) => {
+      const x = 40 + (p.gap / 100) * 320
+      const y = 160 - (p.hours / 72) * 130
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+}
+
 export default function SecurityDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [blockedOnly, setBlockedOnly] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [authStatus, setAuthStatus] = useState<number | null>(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const qs = blockedOnly ? '?blocked=true' : ''
-      const res = await fetch(`/api/security/dashboard${qs}`)
-      if (!res.ok) throw new Error('Failed to load telemetry')
+      const res = await fetch(`/api/security/dashboard${qs}`, { credentials: 'include' })
+      if (!res.ok) {
+        setAuthStatus(res.status)
+        throw new Error('Failed to load telemetry')
+      }
+      setAuthStatus(200)
       setData(await res.json())
     } catch {
-      setError('Could not load security dashboard telemetry.')
+      setError('Admin authentication required to view Security Audit telemetry.')
     } finally {
       setLoading(false)
     }
@@ -76,9 +130,13 @@ export default function SecurityDashboardPage() {
   useEffect(() => {
     let cancelled = false
     const qs = blockedOnly ? '?blocked=true' : ''
-    fetch(`/api/security/dashboard${qs}`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load telemetry')
+    fetch(`/api/security/dashboard${qs}`, { credentials: 'include' })
+      .then(async (res) => {
+        if (!res.ok) {
+          if (!cancelled) setAuthStatus(res.status)
+          throw new Error('Failed to load telemetry')
+        }
+        if (!cancelled) setAuthStatus(200)
         return res.json()
       })
       .then((json) => {
@@ -88,7 +146,7 @@ export default function SecurityDashboardPage() {
         }
       })
       .catch(() => {
-        if (!cancelled) setError('Could not load security dashboard telemetry.')
+        if (!cancelled) setError('Admin authentication required to view Security Audit telemetry.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -105,7 +163,7 @@ export default function SecurityDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-zinc-200 pb-6">
         <div className="space-y-1">
           <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-500">
-            Security Operations &amp; Audit Ledger
+            Security Operations &amp; Evaluation Telemetry
           </div>
           <h1 className="font-serif text-3xl font-medium text-zinc-950">
             Threat Telemetry &amp; Audit Timeline
@@ -136,8 +194,14 @@ export default function SecurityDashboardPage() {
       </div>
 
       {error && (
-        <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800">
-          {error}
+        <div className="rounded-md border border-zinc-200 bg-white p-6 space-y-3 text-xs text-zinc-700">
+          <div className="font-semibold text-zinc-950">
+            {authStatus === 403 ? 'Admin Role Required (403)' : 'Sign In Required (401)'}
+          </div>
+          <p>{error}</p>
+          <Link href="/login" className="inline-block rounded-md bg-zinc-950 px-4 py-2 font-medium text-white">
+            Sign in as Admin →
+          </Link>
         </div>
       )}
 
@@ -151,6 +215,86 @@ export default function SecurityDashboardPage() {
             <KpiCell label="Active Lockouts" value={data.kpis.activeLockouts} />
           </div>
 
+          {data.curveConfig && data.evaluationByMode && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="rounded-md border border-zinc-200 bg-white overflow-hidden">
+                <div className="border-b border-zinc-200 bg-zinc-50 px-5 py-3 flex items-center justify-between">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-700">
+                    Assurance-Gap to Cooling-Off Delay Curve
+                  </h2>
+                  <span className="font-mono text-[11px] text-zinc-500">
+                    Active: {data.curveConfig.activeShape}
+                  </span>
+                </div>
+                <div className="p-5 space-y-3">
+                  <svg viewBox="0 0 380 190" className="w-full h-44" role="img" aria-label="Score gap to cooling-off delay curve">
+                    <line x1="40" y1="160" x2="360" y2="160" stroke="#e4e4e7" strokeWidth="1" />
+                    <line x1="40" y1="30" x2="40" y2="160" stroke="#e4e4e7" strokeWidth="1" />
+                    <text x="8" y="34" fontSize="9" fill="#71717a">72h</text>
+                    <text x="8" y="98" fontSize="9" fill="#71717a">36h</text>
+                    <text x="14" y="162" fontSize="9" fill="#71717a">0h</text>
+                    <text x="40" y="176" fontSize="9" fill="#71717a">Gap 0</text>
+                    <text x="190" y="176" fontSize="9" fill="#71717a">Gap 50</text>
+                    <text x="330" y="176" fontSize="9" fill="#71717a">Gap 100</text>
+                    <polyline
+                      fill="none"
+                      stroke="#18181b"
+                      strokeWidth="2"
+                      points={toPolylinePoints(data.curveConfig.piecewisePoints)}
+                    />
+                    <polyline
+                      fill="none"
+                      stroke="#2563eb"
+                      strokeWidth="1.75"
+                      strokeDasharray="4 3"
+                      points={toPolylinePoints(data.curveConfig.logisticPoints)}
+                    />
+                  </svg>
+                  <div className="flex items-center gap-4 text-[11px] text-zinc-600">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-0.5 w-4 bg-zinc-900 inline-block" /> Piecewise-Linear
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-0.5 w-4 border-t-2 border-dashed border-blue-600 inline-block" /> Logistic
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-zinc-200 bg-white overflow-hidden">
+                <div className="border-b border-zinc-200 bg-zinc-50 px-5 py-3">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-700">
+                    Mode Evaluation Metrics (Live Telemetry)
+                  </h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="text-zinc-500 border-b border-zinc-200 bg-zinc-50/50">
+                      <tr>
+                        <th className="py-2.5 px-4 font-medium">Mode</th>
+                        <th className="py-2.5 px-3 font-medium text-right">Attacker Succ.</th>
+                        <th className="py-2.5 px-3 font-medium text-right">Veto Cov.</th>
+                        <th className="py-2.5 px-3 font-medium text-right">False Block</th>
+                        <th className="py-2.5 px-4 font-medium text-right">Avg Recover</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200 font-mono">
+                      {data.evaluationByMode.map((row) => (
+                        <tr key={row.mode}>
+                          <td className="py-2.5 px-4 font-semibold text-zinc-900 uppercase">{row.mode}</td>
+                          <td className="py-2.5 px-3 text-right">{row.attackerSuccessRate}%</td>
+                          <td className="py-2.5 px-3 text-right">{row.vetoWindowCoverage}%</td>
+                          <td className="py-2.5 px-3 text-right">{row.falseBlockRate}%</td>
+                          <td className="py-2.5 px-4 text-right">{row.avgTimeToRecoverHours}h</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="rounded-md border border-zinc-200 bg-white overflow-hidden">
               <div className="border-b border-zinc-200 bg-zinc-50 px-5 py-3">
@@ -160,9 +304,7 @@ export default function SecurityDashboardPage() {
               </div>
               <div className="p-5">
                 {data.attackBreakdown.length === 0 ? (
-                  <p className="text-xs text-zinc-500">
-                    No blocked attacks recorded yet. Run scenarios in the Attack Simulator.
-                  </p>
+                  <p className="text-xs text-zinc-500">No blocked attacks recorded yet.</p>
                 ) : (
                   <div className="space-y-3.5">
                     {data.attackBreakdown.map((item) => (
@@ -227,7 +369,7 @@ export default function SecurityDashboardPage() {
                 Chronological Audit Log
               </h2>
             </div>
-            <div className="divide-y divide-zinc-200 max-h-[460px] overflow-y-auto">
+            <div className="divide-y divide-zinc-200 max-h-[420px] overflow-y-auto">
               {data.auditLogs.length === 0 ? (
                 <p className="p-5 text-xs text-zinc-500">No audit events recorded yet.</p>
               ) : (
@@ -250,17 +392,10 @@ export default function SecurityDashboardPage() {
                             BLOCKED
                           </span>
                         )}
-                        {log.riskLevel && (
-                          <span className="text-zinc-600">
-                            Risk: <strong className="uppercase text-zinc-900">{log.riskLevel}</strong>
-                            {typeof log.riskScore === 'number' ? ` (${log.riskScore})` : ''}
-                          </span>
-                        )}
                       </div>
                       <div className="text-zinc-500">
                         {log.email ? `${log.email} · ` : ''}
-                        {log.location} (<span className="font-mono">{log.ip}</span>) · FP{' '}
-                        <span className="font-mono">{log.deviceFingerprint.slice(0, 10)}…</span>
+                        {log.location} (<span className="font-mono">{log.ip}</span>)
                       </div>
                     </div>
                     <span className="font-mono text-zinc-400 shrink-0">
@@ -272,47 +407,45 @@ export default function SecurityDashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-md border border-zinc-200 bg-white overflow-hidden">
-            <div className="border-b border-zinc-200 bg-zinc-50 px-5 py-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-700">
-                Nodemailer SMTP Delivery Log
-              </h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="text-zinc-500 border-b border-zinc-200 bg-zinc-50/50">
-                  <tr>
-                    <th className="py-2.5 px-4 font-medium">Recipient</th>
-                    <th className="py-2.5 px-4 font-medium">Template</th>
-                    <th className="py-2.5 px-4 font-medium">Status</th>
-                    <th className="py-2.5 px-4 font-medium">Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-200">
-                  {data.emailLogs.map((mail) => (
-                    <tr key={mail.id}>
-                      <td className="py-2.5 px-4 text-zinc-900">{mail.to}</td>
-                      <td className="py-2.5 px-4 font-mono text-zinc-600">{mail.template}</td>
-                      <td className="py-2.5 px-4">
-                        <span
-                          className={`rounded border px-2 py-0.5 text-[11px] font-medium ${
-                            mail.status === 'sent'
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : 'bg-rose-50 text-rose-800 border-rose-200'
-                          }`}
-                        >
-                          {mail.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 font-mono text-zinc-500">
-                        {new Date(mail.createdAt).toLocaleString()}
-                      </td>
+          {data.telemetryEvents && data.telemetryEvents.length > 0 && (
+            <div className="rounded-md border border-zinc-200 bg-white overflow-hidden">
+              <div className="border-b border-zinc-200 bg-zinc-50 px-5 py-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-700">
+                  Structured PII-Free Telemetry Stream
+                </h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-mono">
+                  <thead className="text-zinc-500 border-b border-zinc-200 bg-zinc-50/50">
+                    <tr>
+                      <th className="py-2 px-4 font-medium">Mode</th>
+                      <th className="py-2 px-4 font-medium">Event</th>
+                      <th className="py-2 px-4 font-medium">State</th>
+                      <th className="py-2 px-4 font-medium">Score / Req</th>
+                      <th className="py-2 px-4 font-medium">Delay</th>
+                      <th className="py-2 px-4 font-medium">Outcome</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200">
+                    {data.telemetryEvents.map((ev) => (
+                      <tr key={ev.id}>
+                        <td className="py-2 px-4 uppercase">{ev.mode}</td>
+                        <td className="py-2 px-4">{ev.eventType}</td>
+                        <td className="py-2 px-4">{ev.state}</td>
+                        <td className="py-2 px-4">
+                          {ev.assuranceAchieved !== null ? `${ev.assuranceAchieved}/${ev.assuranceRequired}` : '—'}
+                        </td>
+                        <td className="py-2 px-4">
+                          {ev.computedDelayHours !== null ? `${ev.computedDelayHours}h` : '—'}
+                        </td>
+                        <td className="py-2 px-4">{ev.outcome}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
     </div>

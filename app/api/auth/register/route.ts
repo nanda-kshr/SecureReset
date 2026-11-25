@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import crypto from 'node:crypto'
 import { getCollections } from '@/lib/db/mongodb'
 import { requireCsrf, jsonError } from '@/lib/security/api-guard'
 import { hashPassword } from '@/lib/security/crypto'
@@ -7,11 +8,15 @@ import { validateNewPassword } from '@/lib/security/password'
 import { getRequestContext } from '@/lib/security/request-context'
 import { createSession, sessionCookieOptions, SESSION_COOKIE_NAME, toPublicUser } from '@/lib/security/session'
 import { logAuditEvent } from '@/lib/security/audit'
+import { RECOVERY_CONFIG } from '@/lib/recovery/config'
 
 const RegisterSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80),
   email: z.string().trim().email('Valid email is required').max(120),
-  password: z.string().min(10, 'Password must be at least 10 characters').max(128),
+  password: z
+    .string()
+    .min(RECOVERY_CONFIG.passwordPolicy.minLength, `Password must be at least ${RECOVERY_CONFIG.passwordPolicy.minLength} characters`)
+    .max(RECOVERY_CONFIG.passwordPolicy.maxLength),
   securityQuestion: z.string().trim().max(160).optional(),
   securityAnswer: z.string().trim().max(120).optional(),
 })
@@ -73,12 +78,29 @@ export async function POST(req: NextRequest) {
       totpEnabled: false,
       totpSecret: null,
       totpPendingSecret: null,
+      passkeysCount: 0,
       securityQuestion: secQ,
+      confirmedChannels: [
+        {
+          id: crypto.randomUUID(),
+          type: 'email',
+          value: email,
+          verified: true,
+          addedAt: now,
+        },
+      ],
+      trustedBrowserKeys: [],
+      recoveryCodes: [],
+      probationUntil: null,
+      flaggedSuspicious: false,
+      flaggedReason: null,
+      lastSecurityChangeAt: null,
       knownDevices: [
         {
           fingerprint: context.deviceFingerprint,
           label: context.deviceLabel,
           ip: context.ip,
+          asn: context.asn,
           location: context.location,
           lastSeenAt: now,
         },

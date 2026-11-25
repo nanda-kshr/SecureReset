@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Shield } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
 import { secureFetch } from '@/lib/client/api'
+import { ThemeToggle } from '@/components/ui'
 
 interface NavUser {
   id: string
@@ -43,32 +44,34 @@ export function Navbar() {
     { href: '/forgot-password', label: 'Reset Flow' },
     { href: '/security-dashboard', label: 'Security Audit' },
     { href: '/simulator', label: 'Attack Simulator' },
+    { href: '/styleguide', label: 'Styleguide' },
     ...(user ? [{ href: '/dashboard', label: 'Account' }] : []),
   ]
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 backdrop-blur-sm">
-      <div className="max-w-6xl mx-auto px-4 sm:px-8 h-14 flex items-center justify-between gap-6">
-        <div className="flex items-center gap-8 h-full">
+    <header className="sticky top-0 z-40 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur-sm">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 h-14 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-6 sm:gap-8 h-full min-w-0">
           <Link
             href="/"
-            className="flex items-center gap-2 font-semibold tracking-tight text-zinc-950"
+            className="flex items-center gap-2 font-semibold tracking-tight text-[var(--text-primary)] shrink-0"
           >
-            <Shield className="h-4 w-4 text-zinc-900" strokeWidth={2} />
+            <ShieldCheck className="h-4 w-4 text-[var(--primary)]" strokeWidth={2.2} aria-hidden="true" />
             <span className="text-[15px]">SecureReset</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6 h-full">
+          <nav aria-label="Primary navigation" className="hidden md:flex items-center gap-5 h-full">
             {navItems.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`h-full inline-flex items-center text-sm border-b-2 transition-colors ${
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`sr-transition h-full inline-flex items-center text-sm border-b-2 whitespace-nowrap ${
                     isActive
-                      ? 'border-zinc-950 text-zinc-950 font-medium'
-                      : 'border-transparent text-zinc-500 hover:text-zinc-900'
+                      ? 'border-[var(--primary)] text-[var(--text-primary)] font-medium'
+                      : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   {item.label}
@@ -78,20 +81,22 @@ export function Navbar() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 shrink-0">
+          <ThemeToggle />
+
           {user ? (
             <>
               <Link
                 href="/dashboard"
-                className="hidden sm:inline-flex items-center gap-2 text-xs text-zinc-700 hover:text-zinc-950"
+                className="hidden sm:inline-flex items-center gap-2 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                <span className="h-2 w-2 rounded-full bg-[var(--success-solid)]" aria-hidden="true" />
                 <span className="font-medium">{user.name}</span>
               </Link>
               <button
                 onClick={handleLogout}
                 type="button"
-                className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950 cursor-pointer"
+                className="sr-transition rounded-[var(--radius-control)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-primary)] cursor-pointer"
               >
                 Sign out
               </button>
@@ -100,13 +105,13 @@ export function Navbar() {
             <>
               <Link
                 href="/login"
-                className="px-2.5 py-1.5 text-sm text-zinc-600 hover:text-zinc-950"
+                className="sr-transition px-2.5 py-1.5 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-[var(--radius-control)]"
               >
                 Sign in
               </Link>
               <Link
                 href="/register"
-                className="rounded-md bg-zinc-950 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 transition-colors"
+                className="sr-transition rounded-[var(--radius-control)] bg-[var(--primary)] px-3.5 py-1.5 text-sm font-medium text-[var(--primary-fg)] hover:bg-[var(--primary-hover)]"
               >
                 Register
               </Link>
@@ -115,19 +120,25 @@ export function Navbar() {
         </div>
       </div>
 
-      <div className="md:hidden border-t border-zinc-200 bg-zinc-50 px-4 py-2 flex gap-4 overflow-x-auto">
+      <nav
+        aria-label="Mobile navigation"
+        className="md:hidden border-t border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] px-4 py-2 flex gap-4 overflow-x-auto"
+      >
         {navItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={`whitespace-nowrap text-xs ${
-              pathname === item.href ? 'font-semibold text-zinc-950' : 'text-zinc-500'
+            aria-current={pathname === item.href ? 'page' : undefined}
+            className={`whitespace-nowrap text-xs py-0.5 ${
+              pathname === item.href
+                ? 'font-semibold text-[var(--text-primary)]'
+                : 'text-[var(--text-muted)]'
             }`}
           >
             {item.label}
           </Link>
         ))}
-      </div>
+      </nav>
     </header>
   )
 }

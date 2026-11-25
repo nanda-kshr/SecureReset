@@ -7,6 +7,8 @@ import { getCurrentSession, SESSION_COOKIE_NAME, toPublicUser } from '@/lib/secu
 import { generateTotpEnrollment, verifyTotpCode } from '@/lib/security/totp'
 import { getRequestContext } from '@/lib/security/request-context'
 import { logAuditEvent } from '@/lib/security/audit'
+import { enforcePostResetProbation } from '@/lib/recovery/probation'
+import { resolveResetMode } from '@/lib/recovery/config'
 
 const SettingsSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('setup-totp') }),
@@ -17,6 +19,7 @@ const SettingsSchema = z.discriminatedUnion('action', [
     question: z.string().trim().min(5).max(160),
     answer: z.string().trim().min(2).max(120),
   }),
+  z.object({ action: z.literal('toggle-passkey'), enabled: z.boolean() }),
   z.object({ action: z.literal('revoke-other-sessions') }),
 ])
 
@@ -30,8 +33,9 @@ export async function POST(req: NextRequest) {
   }
 
   const context = getRequestContext(req)
+  const mode = resolveResetMode(req)
   const { users, sessions } = await getCollections()
-  const { user } = current
+  const { user, session } = current
 
   try {
     const body = await req.json()
@@ -41,6 +45,35 @@ export async function POST(req: NextRequest) {
     }
 
     const data = parsed.data
+
+    if (
+      data.action === 'setup-totp' ||
+      data.action === 'confirm-totp' ||
+      data.action === 'disable-totp' ||
+      data.action === 'set-security-question' ||
+      data.action === 'toggle-passkey'
+    ) {
+      const probationAction =
+        data.action === 'set-security-question'
+          ? 'change_recovery_settings'
+          : data.action === 'toggle-passkey'
+            ? 'add_trusted_key_or_passkey'
+            : 'change_mfa'
+
+      const probation = await enforcePostResetProbation({
+        user,
+        action: probationAction,
+        context,
+        mode,
+        sessionCreatedAt: session.createdAt,
+      })
+      if (!probation.allowed) {
+        return jsonError(probation.message!, 403, {
+          code: 'PROBATION_ACTIVE',
+          unlocksAt: probation.unlocksAt,
+        })
+      }
+    }
 
     if (data.action === 'setup-totp') {
       const enrollment = await generateTotpEnrollment(user.email)
@@ -61,6 +94,7 @@ export async function POST(req: NextRequest) {
       if (!verifyTotpCode(user.totpPendingSecret, data.code)) {
         return jsonError('Invalid 6-digit authenticator code.', 400)
       }
+      const now = new Date()
       await users.updateOne(
         { _id: user._id },
         {
@@ -68,7 +102,8 @@ export async function POST(req: NextRequest) {
             totpEnabled: true,
             totpSecret: user.totpPendingSecret,
             totpPendingSecret: null,
-            updatedAt: new Date(),
+            lastSecurityChangeAt: now,
+            updatedAt: now,
           },
         }
       )
@@ -91,9 +126,17 @@ export async function POST(req: NextRequest) {
       if (!verifyTotpCode(user.totpSecret, data.code)) {
         return jsonError('Invalid 6-digit authenticator code.', 400)
       }
+      const now = new Date()
       await users.updateOne(
         { _id: user._id },
-        { $set: { totpEnabled: false, totpSecret: null, updatedAt: new Date() } }
+        {
+          $set: {
+            totpEnabled: false,
+            totpSecret: null,
+            lastSecurityChangeAt: now,
+            updatedAt: now,
+          },
+        }
       )
       await logAuditEvent({
         eventType: 'TOTP_DISABLED',
@@ -109,17 +152,43 @@ export async function POST(req: NextRequest) {
 
     if (data.action === 'set-security-question') {
       const answerHash = await hashPassword(data.answer.toLowerCase().trim())
+      const now = new Date()
       await users.updateOne(
         { _id: user._id },
         {
           $set: {
             securityQuestion: { question: data.question, answerHash },
-            updatedAt: new Date(),
+            lastSecurityChangeAt: now,
+            updatedAt: now,
           },
         }
       )
       await logAuditEvent({
         eventType: 'SECURITY_QUESTION_UPDATED',
+        severity: 'info',
+        blocked: false,
+        email: user.email,
+        userId: user._id!,
+        context,
+      })
+      const updated = await users.findOne({ _id: user._id })
+      return NextResponse.json({ ok: true, user: updated ? toPublicUser(updated) : null })
+    }
+
+    if (data.action === 'toggle-passkey') {
+      const now = new Date()
+      await users.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            passkeysCount: data.enabled ? 1 : 0,
+            lastSecurityChangeAt: now,
+            updatedAt: now,
+          },
+        }
+      )
+      await logAuditEvent({
+        eventType: data.enabled ? 'PASSKEY_REGISTERED' : 'PASSKEY_REMOVED',
         severity: 'info',
         blocked: false,
         email: user.email,

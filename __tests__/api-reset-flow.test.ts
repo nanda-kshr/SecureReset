@@ -9,11 +9,14 @@ import { UNIFORM_RESET_MESSAGE } from '@/app/api/auth/reset-request/route'
 const store = {
   users: [] as Array<Record<string, unknown>>,
   sessions: [] as Array<Record<string, unknown>>,
+  refreshTokens: [] as Array<Record<string, unknown>>,
+  apiKeys: [] as Array<Record<string, unknown>>,
   resetTokens: [] as Array<Record<string, unknown>>,
   rateLimits: [] as Array<Record<string, unknown>>,
   usedCaptchas: [] as Array<Record<string, unknown>>,
   auditLogs: [] as Array<Record<string, unknown>>,
   emailLogs: [] as Array<Record<string, unknown>>,
+  telemetryEvents: [] as Array<Record<string, unknown>>,
 }
 
 function matchesQuery(doc: Record<string, unknown>, query: Record<string, unknown>): boolean {
@@ -99,11 +102,14 @@ vi.mock('@/lib/db/mongodb', () => ({
   getCollections: vi.fn(async () => ({
     users: makeMockCollection(store.users),
     sessions: makeMockCollection(store.sessions),
+    refreshTokens: makeMockCollection(store.refreshTokens),
+    apiKeys: makeMockCollection(store.apiKeys),
     resetTokens: makeMockCollection(store.resetTokens),
     rateLimits: makeMockCollection(store.rateLimits),
     usedCaptchas: makeMockCollection(store.usedCaptchas),
     auditLogs: makeMockCollection(store.auditLogs),
     emailLogs: makeMockCollection(store.emailLogs),
+    telemetryEvents: makeMockCollection(store.telemetryEvents),
   })),
 }))
 
@@ -123,6 +129,7 @@ const sendAlertSpy = vi.fn<(arg: Record<string, unknown>) => Promise<{ sent: boo
 vi.mock('@/lib/email/mailer', () => ({
   sendPasswordResetEmail: (arg: { resetUrl: string; otp: string }) => sendMailSpy(arg),
   sendPasswordChangedAlertEmail: (arg: Record<string, unknown>) => sendAlertSpy(arg),
+  sendCoolingOffVetoEmail: vi.fn(async () => []),
 }))
 
 function buildAuthedPost(url: string, body: unknown, extraHeaders: Record<string, string> = {}) {
@@ -144,11 +151,14 @@ describe('API Route Handlers — Register & Reset Flow', () => {
   beforeEach(() => {
     store.users.length = 0
     store.sessions.length = 0
+    store.refreshTokens.length = 0
+    store.apiKeys.length = 0
     store.resetTokens.length = 0
     store.rateLimits.length = 0
     store.usedCaptchas.length = 0
     store.auditLogs.length = 0
     store.emailLogs.length = 0
+    store.telemetryEvents.length = 0
     sendMailSpy.mockClear()
     sendAlertSpy.mockClear()
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 200 }))
@@ -257,9 +267,11 @@ describe('API Route Handlers — Register & Reset Flow', () => {
 
     const { POST: reqReset } = await import('@/app/api/auth/reset-request/route')
     await reqReset(
-      buildAuthedPost('http://localhost:3000/api/auth/reset-request', {
-        email: 'bob@example.com',
-      })
+      buildAuthedPost(
+        'http://localhost:3000/api/auth/reset-request',
+        { email: 'bob@example.com' },
+        { 'x-test-reset-mode': 'standard' }
+      )
     )
 
     const mailCall = sendMailSpy.mock.calls[0][0] as { resetUrl: string; otp: string }

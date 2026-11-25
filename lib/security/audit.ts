@@ -1,5 +1,6 @@
 import { ObjectId } from 'mongodb'
 import { AuditSeverity, getCollections, RiskLevel } from '@/lib/db/mongodb'
+import { maskEmailForDisplay } from './crypto'
 import type { RequestContext } from './request-context'
 
 export interface LogAuditInput {
@@ -21,7 +22,8 @@ export async function logAuditEvent(input: LogAuditInput): Promise<void> {
       eventType: input.eventType,
       severity: input.severity,
       blocked: input.blocked,
-      email: input.email?.toLowerCase(),
+      // Store masked identifier to minimize PII retention in audit logs
+      email: input.email ? maskEmailForDisplay(input.email.toLowerCase()) : undefined,
       userId: input.userId ?? null,
       ip: input.context.ip,
       location: input.context.location,
